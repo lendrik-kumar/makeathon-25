@@ -20,7 +20,47 @@ type EventInput struct {
 	EventData string `json:"event_data" binding:"required"`
 }
 
-func createEvent(c *gin.Context) {
+// Add this utility function
+func createEventRecord(event *models.Event) error {
+	// Find the last event for this product
+	var lastEvent models.Event
+	err := db.Where("product_id = ?", event.ProductID).Order("created_at desc").First(&lastEvent).Error
+	previousHash := ""
+	if err != nil {
+		if !errors.Is(err, gorm.ErrRecordNotFound) {
+			return err
+		}
+	} else {
+		previousHash = lastEvent.EventHash
+	}
+
+	event.PreviousEventHash = previousHash
+
+	// Create the event
+	if err := db.Create(event).Error; err != nil {
+		return err
+	}
+
+	// Calculate and save hash
+	hashData := utils.EventHashData{
+		ProductID:         event.ProductID,
+		EventType:         event.EventType,
+		EventData:         event.EventData,
+		CreatedAt:         event.CreatedAt,
+		CreatedBy:         event.CreatedBy,
+		PreviousEventHash: event.PreviousEventHash,
+	}
+
+	eventHash, err := utils.ComputeEventHash(hashData)
+	if err != nil {
+		return err
+	}
+
+	event.EventHash = eventHash
+	return db.Save(event).Error
+}
+
+func CreateEvent(c *gin.Context) {
 	productID := c.Param("id")
 	role, _ := c.Get("role")
 
@@ -35,18 +75,6 @@ func createEvent(c *gin.Context) {
 		return
 	}
 
-	var lastEvent models.Event
-	err := db.Where("product_id = ?", productID).Order("created_at desc").First(&lastEvent).Error
-	previousHash := ""
-	if err != nil {
-		if !errors.Is(err, gorm.ErrRecordNotFound) {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-			return
-		}
-	} else {
-		previousHash = lastEvent.EventHash
-	}
-
 	productIDUint, err := strconv.ParseUint(productID, 10, 32)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid product ID"})
@@ -55,36 +83,14 @@ func createEvent(c *gin.Context) {
 
 	userID, _ := c.Get("user_id")
 	event := models.Event{
-		ProductID:         uint(productIDUint),
-		EventType:         input.EventType,
-		EventData:         input.EventData,
-		PreviousEventHash: previousHash,
-		CreatedBy:         userID.(uint),
+		ProductID: uint(productIDUint),
+		EventType: input.EventType,
+		EventData: input.EventData,
+		CreatedBy: userID.(uint),
 	}
 
-	if err := db.Create(&event).Error; err != nil {
+	if err := createEventRecord(&event); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create event"})
-		return
-	}
-
-	hashData := utils.EventHashData{
-		ProductID:         event.ProductID,
-		EventType:         event.EventType,
-		EventData:         event.EventData,
-		CreatedAt:         event.CreatedAt,
-		CreatedBy:         event.CreatedBy,
-		PreviousEventHash: event.PreviousEventHash,
-	}
-
-	eventHash, err := utils.ComputeEventHash(hashData)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to compute hash"})
-		return
-	}
-
-	event.EventHash = eventHash
-	if err := db.Save(&event).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update event hash"})
 		return
 	}
 

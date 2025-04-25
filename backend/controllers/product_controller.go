@@ -51,7 +51,7 @@ func RegisterProduct(c *gin.Context) {
 		CreatedBy: userID.(uint),
 	}
 
-	if err := createEvent(&event); err != nil {
+	if err := createEventRecord(&event); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to log registration event"})
 		return
 	}
@@ -158,7 +158,7 @@ func ConfirmTransfer(c *gin.Context) {
         CreatedBy:  userID.(uint),
     }
 
-    if err := createEvent(&event); err != nil {
+    if err := createEventRecord(&event); err != nil {
         c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to log transfer event"})
         return
     }
