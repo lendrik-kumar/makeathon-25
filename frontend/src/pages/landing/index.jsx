@@ -13,7 +13,7 @@ const Landing = () => {
       <div className="relative z-10 p-8 flex flex-col items-center">
         {/* Heading */}
         <h1 className="text-5xl font-bold text-center mb-10 leading-tight">
-          Get the <span className="text-green-400">Application</span> you<br />Want for Growth
+          Get the <span className="text-green-400">Application</span> you<br />Want for Growthhj
         </h1>
 
         {/* Search Bar */}
