@@ -1,15 +1,19 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+import SplineModel from "./components/splineModel"
+import { BrowserRouter as Router , Routes , Route } from "react-router-dom"
+import Compiler from './components/Compiler'
+import Landing from "./pages/landing"
+
 
 function App() {
-  const [count, setCount] = useState(0)
 
   return (
-    <div className=' flex justify-center items-center' >
-      
-    </div>
+    <Router>
+      <Routes>
+        <Route path="/" element={<Compiler/>}>
+          <Route path="Home" element={<Landing/>}></Route>
+        </Route>
+      </Routes>
+    </Router>
   )
 }
 
